@@ -55,7 +55,8 @@ local function digToDepth()
         if turtle.down() then
             y = y - 1
         else
-            print("Cannot go down anymore.")
+            print("Cannot go down anymore, possibly bedrock.")
+            -- If we can't go down anymore, try moving horizontally to find a path down
             return false -- Stop if we can't go down anymore
         end
     end
@@ -76,7 +77,9 @@ end
 -- Function to mine for diamonds and strip mine
 local function mineForDiamonds()
     if not digToDepth() then
-        return
+        -- If we can't reach the target depth due to bedrock, switch to horizontal mining
+        print("Switching to horizontal mining due to bedrock.")
+        returnToLastSafeDepth()
     end
 
     -- Strip mining in a 2D pattern
@@ -121,6 +124,21 @@ local function mineForDiamonds()
         moveForward()
     end
     turnToDirection(3) -- Face West
+end
+
+-- Function to return to the last safe depth when hitting bedrock
+local function returnToLastSafeDepth()
+    print("Returning to last safe depth...")
+    while y > targetDepth do
+        if turtle.up() then
+            y = y + 1
+            print("Ascending to y = " .. y)
+        else
+            print("Cannot go up, might be stuck. Stopping.")
+            break
+        end
+    end
+    print("Now at safe depth.")
 end
 
 -- Function to return home by retracing steps
