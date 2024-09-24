@@ -5,8 +5,11 @@ local homeX, homeY, homeZ = 93, 38, 73
 local maxX, maxY, maxZ = 500, 500, 500
 
 -- Direction: 0 = North, 1 = East, 2 = South, 3 = West
-local x, y, z = 0, 0, 0 -- Current coordinates
+local x, y, z = homeX, homeY, homeZ -- Start at home coordinates
 local direction = 0 -- 0 = North, 1 = East, 2 = South, 3 = West
+
+-- Target depth
+local targetDepth = -53
 
 -- Function to initialize the Turtle
 local function init()
@@ -37,23 +40,27 @@ local function moveForward()
     end
 end
 
--- Function to turn the turtle right and update direction
-local function turnRight()
-    turtle.turnRight()
-    direction = (direction + 1) % 4
-end
-
--- Function to turn the turtle left and update direction
-local function turnLeft()
-    turtle.turnLeft()
-    direction = (direction - 1 + 4) % 4
-end
-
--- Function to mine forward
-local function digForward()
-    while turtle.detect() do
-        turtle.dig()
+-- Function to dig straight down
+local function digDown()
+    while turtle.detectDown() do
+        turtle.digDown()
     end
+end
+
+-- Function to dig down to the target depth
+local function digToDepth()
+    print("Diving down to depth " .. targetDepth .. "...")
+    while y > targetDepth do
+        digDown()
+        if turtle.down() then
+            y = y - 1
+        else
+            print("Cannot go down anymore.")
+            return false -- Stop if we can't go down anymore
+        end
+    end
+    print("Reached target depth: " .. targetDepth)
+    return true
 end
 
 -- Function to check if inventory is full
@@ -66,13 +73,27 @@ local function isInventoryFull()
     return true
 end
 
--- Function to mine for diamonds
+-- Function to mine for diamonds and strip mine
 local function mineForDiamonds()
-    while true do
+    if not digToDepth() then
+        return
+    end
+
+    -- Strip mining in a 2D pattern
+    local stripLength = 10 -- Length of each strip
+    for i = 1, stripLength do
         -- Check if inventory is full
         if isInventoryFull() then
             print("Inventory full, returning to start.")
             returnHome()
+            break
+        end
+
+        -- Dig forward
+        digForward()
+        if not moveForward() then
+            print("Unable to move forward, stopping mining.")
+            returnHome()  -- Turtle returns home if it can't move forward
             break
         end
 
@@ -81,21 +102,6 @@ local function mineForDiamonds()
         if success and block.name == "minecraft:diamond_ore" then
             print("Diamond ore found!")
             turtle.dig()
-        end
-
-        -- Mine and move forward
-        digForward()
-        if not moveForward() then
-            print("Unable to move forward, stopping mining.")
-            returnHome()  -- Turtle returns home if it can't move forward
-            break
-        end
-
-        -- Check if turtle is outside the boundaries
-        if x >= maxX or y >= maxY or z >= maxZ then
-            print("Out of bounds. Returning home.")
-            returnHome()  -- Turtle returns home if out of bounds
-            break
         end
 
         -- Check fuel level
@@ -108,33 +114,29 @@ local function mineForDiamonds()
         -- Sleep to prevent rapid execution
         sleep(0.5)
     end
+
+    -- Turn around to return home after strip mining
+    turnToDirection(2) -- Face South
+    for i = 1, stripLength do
+        moveForward()
+    end
+    turnToDirection(3) -- Face West
 end
 
 -- Function to return home by retracing steps
- function ReturnHome()
+local function returnHome()
     print("Returning to home base...")
-    while z > homeZ do
-        turnToDirection(2) -- Face South
+    while z < homeZ do
+        turnToDirection(0) -- Face North
         moveForward()
-        z = z - 1
+        z = z + 1
     end
-    while x > homeX do
-        turnToDirection(3) -- Face West
+    while x < homeX do
+        turnToDirection(1) -- Face East
         moveForward()
-        x = x - 1
+        x = x + 1
     end
     print("Turtle returned home.")
-end
-
--- Function to refuel the turtle
-local function refuel()
-    print("Refueling...")
-    -- Insert refuel logic here (e.g., using coal)
-    if turtle.getFuelLevel() < turtle.getFuelLimit() then
-        turtle.refuel(1)
-    else
-        print("Fuel is sufficient.")
-    end
 end
 
 -- Function to turn to a specific direction
